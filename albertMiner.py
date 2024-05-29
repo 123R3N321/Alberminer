@@ -250,3 +250,6 @@ if __name__ == "__main__":
         # Close the WebDriver
         driver.quit()
         # dumpJson(urlSet, filename = "testData.json")
+
+
+#todo: next step, add LRU for clicking css selector candidates for speed optimization.
