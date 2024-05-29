@@ -1,4 +1,5 @@
 *
 
 !.gitignore
-!.albertMiner.py
+!albertMiner.py
+!requirements.txt
