@@ -1,3 +1,78 @@
+'''
+Now I need a data structure to support fast css selector switching
+to add new selector, use 'IND' to indicate where index should be placed
+'''
+class SelectorManager:
+    def __init__(self,selectorLst = None):
+        self.rawData = selectorLst
+        self.n = 0  # this is the consecutive selector index for consecutive elements
+                    # we manually set this outside of the object, in the try-except block
+                    # note that we always tally even when fail. This is a case-by-case design decision
+
+        self.top = 0    #always stays at 0, top of the list
+        self.bumper = 0 #repeatedly increased by one by each call of "roll"
+                        #setTop relies one bumper
+        self.switch = False
+
+    def add(self,selector):
+        if selector in self.rawData:
+            print("This selector already exists")
+        else:
+            self.rawData.append(selector)
+    def reset(self):
+        self.rawData = []
+        self.n = 0
+        self.top = 0
+        self.bumper = 0
+        self.switch = False
+
+    '''
+    called whenever trying to look for a selector inside a try block
+    '''
+    def roll(self):
+
+        ind = self.bumper%len(self.rawData)
+        self.bumper += 1    # we bump regardless if we will succeed
+                            # of course the first roll always returns the top selector
+                            # but each subsequent roll gives a consecutive next element
+        if self.top == ind and self.switch: #this condition means we tried every selector and we do not have a match
+            self.switch = False
+            return "FAIL"   # if we see "FAIL", do not bother to wait for the try-except, break loop
+        self.switch = True
+        print("current chosen selector by roll: ",self.rawData[ind].replace("IND",str(self.n)))
+        return self.rawData[ind].replace("IND",str(self.n))
+
+    '''
+    called only after a roll call
+    also must be in the except block
+    '''
+    def setTop(self):
+        ind = (self.bumper-1)%len(self.rawData)
+        if self.top != ind: # meaning we just had a miss
+            self.rawData[self.top], self.rawData[ind] = self.rawData[ind], self.rawData[self.top]
+
+    '''
+    called outside (before/after, in my case before) try-except block to refresh
+    '''
+    def update(self,code=0):
+        self.bumper = 0
+        self.n += code
+        self.switch = False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 from selenium.common import TimeoutException
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.common.by import By
@@ -55,34 +130,67 @@ def run(): #do not load image for better speed
     startSearch.click()
     time.sleep(3)
 
-    n=0
-    breaker = 1024
-    while n<50 and breaker>0:
-        n+=1
-        breaker -= 1
 
+    selectorManager = SelectorManager(["div.result:nth-child(IND) > a:nth-child(1)",
+                                       "div.result:nth-child(IND)"])
+
+
+    breaker = 255
+    while selectorManager.n<50 and breaker>0:
+        breaker -= 1
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        try:
-            checkOne = WebDriverWait(driver, 0.2).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, f"div.result:nth-child({str(n)}) > a:nth-child(1)"))
-            )
-            checkOne.click()
-        except Exception as e:
+        selectorManager.setTop()
+        selectorManager.update(1)
+
+        for i in range(len(selectorManager.rawData)):
+            curSelector = selectorManager.roll()
+            if "FAIL"==curSelector:
+                print("unknown selector at n= ",selectorManager.n)
+                break
+
             try:
                 checkOne = WebDriverWait(driver, 0.2).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, f"div.result:nth-child({str(n)})"))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, curSelector))
                 )
                 checkOne.click()
+                print("succeeded, with list: ",selectorManager.rawData, " more specifically, selector is: ",curSelector)
+
+                break
+
             except Exception as e:
-                print(f"Exception of clicking at n={n}")
-            try:
-                locInfo = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR,".meet"))
-                )
-                print(locInfo.text, "at index n: ",n)
-            except Exception as e:
-                print(f"Exception of getting meeting info at n={n}")
+                print("selector switch happened, now we have: ",selectorManager.rawData)
+
+
+
+
+    # n=0
+    # breaker = 1024
+    # while n<50 and breaker>0:
+    #     n+=1
+    #     breaker -= 1
+    #
+    #     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    #     try:
+    #         checkOne = WebDriverWait(driver, 0.2).until(
+    #             EC.presence_of_element_located((By.CSS_SELECTOR, f"div.result:nth-child({str(n)}) > a:nth-child(1)"))
+    #         )
+    #         checkOne.click()
+    #     except Exception as e:
+    #         try:
+    #             checkOne = WebDriverWait(driver, 0.2).until(
+    #                 EC.presence_of_element_located(
+    #                     (By.CSS_SELECTOR, f"div.result:nth-child({str(n)})"))
+    #             )
+    #             checkOne.click()
+    #         except Exception as e:
+    #             print(f"Exception of clicking at n={n}")
+    #         try:
+    #             locInfo = WebDriverWait(driver, 5).until(
+    #                 EC.presence_of_element_located((By.CSS_SELECTOR,".meet"))
+    #             )
+    #             print(locInfo.text, "at index n: ",n)
+    #         except Exception as e:
+    #             print(f"Exception of getting meeting info at n={n}")
 
     time.sleep(3)
 
@@ -244,12 +352,34 @@ def dumpJson(urlLst, filename = "testData.json"):
 
 
 if __name__ == "__main__":
+
+    # selectorManager = SelectorManager(["fakeAtIndINDpos","anotherwithINDpos"])
+    # print("we just initializd is: ",selectorManager.rawData)
+    # print("first, try to roll: ", selectorManager.roll())
+    # print("check if bumper goes to 1 corrct: ", selectorManager.bumper)
+    # print("roll again, we check another: ",selectorManager.roll())
+    # print("check if bumper goes to 2 corrct: ", selectorManager.bumper)
+    # # print("roll a third time, we should fail now: ",selectorManager.roll())
+    # # print("check if bumper goes to 3 corrct: ", selectorManager.bumper)
+    # selectorManager.setTop()
+    # selectorManager.update(0)
+    #
+    # print("check entire list after setTop: ", selectorManager.rawData)
+    # print("look all good, we try more: ")
+    # print("first, try to roll, we shld see another: ", selectorManager.roll())
+    # print("check if bumper goes to 1 corrct: ", selectorManager.bumper)
+    # print("roll again, we check fake at: ",selectorManager.roll())
+    # print("check if bumper goes to 2 corrct: ", selectorManager.bumper)
+    # print("roll a third time, we should fail now: ",selectorManager.roll())
+    # print("check if bumper goes to 3 corrct: ", selectorManager.bumper)
+
+
     try:
         run()
     finally:
         # Close the WebDriver
         driver.quit()
-        # dumpJson(urlSet, filename = "testData.json")
+    # #     # dumpJson(urlSet, filename = "testData.json")
 
 
 #todo: next step, add LRU for clicking css selector candidates for speed optimization.
