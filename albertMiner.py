@@ -110,6 +110,25 @@ def scroll_by_step(driver, selector, step_height = 80):
 def zoom_out(driver, zoom_level=0.5):
     driver.execute_script(f"document.body.style.zoom='{zoom_level}'")
 
+'''
+dynamic scroll adjustment function, the upperBound and lowerBounds
+are heuristics obtained from manually inspecting the page
+also auto obtained via scrollable container
+in our case, roughly lowerbound 600 (bottom of viewport) and adjust scroll bigger
+                     upperbound 300 (top of viewport) and adjust scroll smaller
+             item hiehgt roughly 100. this is auto obtained 
+'''
+def dynamicScrollAdjust(upperBound=300, lowerBound=600, itemTop=450, itemSize=100):
+    baseline = (lowerBound - upperBound)/2  # the middle of the viewport
+    adjust = 0  #we increase/decrease scrolling based on adjust mount. Return val.
+    if itemTop-2*itemSize < upperBound:    #item is too high, adjust down scroll
+        adjust = itemSize - (baseline-upperBound)
+    elif itemTop+2*itemSize > lowerBound: #item is too low, adjust up scroll
+        adjust = itemSize + (lowerBound-baseline)
+    else:
+        adjust = itemSize
+    return adjust
+
 
 def run(): #do not load image for better speed
     global driver
@@ -143,7 +162,8 @@ def run(): #do not load image for better speed
         EC.presence_of_element_located((By.ID, "search-button"))  # Adjust the selector as needed
     )
     startSearch.click()
-    time.sleep(3)
+
+
 
 
     selectorManager = SelectorManager(["div.result:nth-child(IND) > a:nth-child(1)",
@@ -155,14 +175,22 @@ def run(): #do not load image for better speed
     breaker = 255
     inPageDelay = 0.2
     delayFactor = 5
-    step_height = 70  # Amount to scroll each time
+    step_height = 0  # Amount to scroll each time
+    correction = 50
+
+    scanRange = 200
 
     # zoom_out(driver,0.2)
     '''
     somehow, zoom function breaks the scraping
     '''
+    container = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR,scrollable_container_selector ))
+    )
+    upperBound = container.location['y']
+    lowerBound = container.size['height'] + upperBound
 
-    while selectorManager.n<200 and breaker>0:
+    while selectorManager.n<scanRange and breaker>0:
         breaker -= 1
         # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         selectorManager.setTop()
@@ -173,7 +201,7 @@ def run(): #do not load image for better speed
             if "FAIL"==curSelector:
                 print("unknown selector at n= ",selectorManager.n)
                 unknownCt +=1
-                scroll_by_step(driver, scrollable_container_selector, step_height)
+                scroll_by_step(driver, scrollable_container_selector, correction)
 
                 break
 
@@ -181,7 +209,15 @@ def run(): #do not load image for better speed
                 checkOne = WebDriverWait(driver, inPageDelay).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, curSelector))
                 )
+                print("testing eachButton top, ",checkOne.location["y"]," and total height: ",checkOne.size["height"])
+                '''
+                below is the dynamic scroll code, might fail. Careful.
+                '''
+                #todo: watch the below code carefully!!!!!!!
+                step_height= max(0,dynamicScrollAdjust(upperBound,lowerBound,checkOne.location["y"],checkOne.size["height"])-correction)
                 checkOne.click()
+                print("                                         obtained bounds:", upperBound, lowerBound, "item data: ",checkOne.location["y"],checkOne.size["height"])
+                print("                                     adjusted scroll size to be: ", step_height)
                 # print("succeeded, with list: ",selectorManager.rawData, " more specifically, selector is: ",curSelector)
 
                 try:
@@ -198,7 +234,7 @@ def run(): #do not load image for better speed
                     failCt+=1
                     print(f"Exception of getting meeting info at n={selectorManager.n}, the class prolly does not meet!")
 
-                    scroll_by_step(driver, scrollable_container_selector, step_height)
+                    scroll_by_step(driver, scrollable_container_selector, correction)
 
                 break
 
