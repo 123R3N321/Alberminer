@@ -133,6 +133,9 @@ def dynamicScrollAdjust(upperBound=300, lowerBound=600, itemTop=450, itemSize=10
         adjust = itemSize
     return adjust
 
+
+
+data = []
 '''
 the function that does the mining
 '''
@@ -195,6 +198,7 @@ def run(): #do not load image for better speed
     upperBound = container.location['y']
     lowerBound = container.size['height'] + upperBound
 
+    prevInfo = ""
     while selectorManager.n<scanRange and breaker>0:
         breaker -= 1
         # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -221,8 +225,8 @@ def run(): #do not load image for better speed
                 #todo: watch the below code carefully!!!!!!!
                 step_height= max(0,dynamicScrollAdjust(upperBound,lowerBound,checkOne.location["y"],checkOne.size["height"])-correction)
                 checkOne.click()
-                print("                                         obtained bounds:", upperBound, lowerBound, "item data: ",checkOne.location["y"],checkOne.size["height"])
-                print("                                     adjusted scroll size to be: ", step_height)
+                # print("                                         obtained bounds:", upperBound, lowerBound, "item data: ",checkOne.location["y"],checkOne.size["height"])
+                # print("                                     adjusted scroll size to be: ", step_height)
                 # print("succeeded, with list: ",selectorManager.rawData, " more specifically, selector is: ",curSelector)
 
                 try:    #when course button located successfully,
@@ -232,6 +236,11 @@ def run(): #do not load image for better speed
                     )
                     print(locInfo.text, "at index n: ",selectorManager.n)
                     successCt+=1
+
+                    global data
+                    if locInfo.text != prevInfo:
+                        data.append(locInfo.text+"at index n: "+str(selectorManager.n))
+                    prevInfo = locInfo.text
 
                     scroll_by_step(driver, scrollable_container_selector, step_height)
                     break
@@ -277,7 +286,6 @@ def dumpJson(urlLst, filename = "testData.json"):
     print(f"Combined JSON data written to {filename}")
 
 
-if __name__ == "__main__":
 
     # selectorManager = SelectorManager(["fakeAtIndINDpos","anotherwithINDpos"])
     # print("we just initializd is: ",selectorManager.rawData)
@@ -300,12 +308,84 @@ if __name__ == "__main__":
     # print("check if bumper goes to 3 corrct: ", selectorManager.bumper)
 
 
+###################################below is data analysing##########################################
+
+import re
+import datetime
+
+
+def analyse(buildingSel = "2"):
+    global data
+
+    # data = [
+    #     "T 11am-12:20pm in Dibner , Pfizer Auditorium (9/3 to 12/12) at index n:  22",
+    #     "T 11am-12:20pm in Dibner , Pfizer Auditorium (9/3 to 12/12) at index n:  22",
+    #     "T 11am-12:20pm in Dibner , Pfizer Auditorium (9/3 to 12/12) at index 6"
+    # ]
+
+    # Regular expression pattern to match the relevant information
+    pattern = re.compile(
+        r"(?P<days>[MTWRFSU]{1,2})\s+"
+        r"(?P<start_time>\d{1,2}(?::\d{2})?(?:am|pm))-(?P<end_time>\d{1,2}(?::\d{2})?(?:am|pm))\s+"
+        r"in\s+(?P<building>[\w\s,]+),\s+(?P<room>[\w\s]+)\s+"
+        r"\((?P<start_date>\d{1,2}/\d{1,2})\s+to\s+(?P<end_date>\d{1,2}/\d{1,2})\)"
+    )
+
+    # Helper function to convert time strings to time objects
+    def convert_to_time(time_str):
+        try:
+            # Attempt to parse the time with the format '%I:%M%p'
+            return datetime.datetime.strptime(time_str, '%I:%M%p').time()
+        except ValueError:
+            # If parsing fails, attempt to parse without minutes and colon
+            try:
+                # Parse the time without minutes and colon
+                return datetime.datetime.strptime(time_str, '%I%p').time()
+            except ValueError:
+                # If parsing still fails, raise an error
+                raise ValueError("Time format not recognized: " + time_str)
+
+    # Helper function to convert date strings to datetime objects
+    def convert_to_date(date_str):
+        return datetime.datetime.strptime(date_str, '%m/%d').replace(year=datetime.datetime.now().year)
+
+    # Set to store unique entries
+    unique_entries = set()
+
+    # Parse the data and extract relevant information
+    for each in data:
+        match = pattern.match(each)
+        if match:
+            # Extract match groups
+            day = match.group('days')
+            start_time = convert_to_time(match.group('start_time'))
+            end_time = convert_to_time(match.group('end_time'))
+            building = match.group('building').strip()
+            room = match.group('room').strip()
+            start_date = convert_to_date(match.group('start_date'))
+            end_date = convert_to_date(match.group('end_date'))
+
+            # Create a tuple of extracted information
+            entry_tuple = (day, start_time, end_time, building, room, start_date, end_date)
+
+            # Add the tuple to the set of unique entries
+            unique_entries.add(entry_tuple)
+
+    # Output the unique entries
+    for entry in unique_entries:
+        if buildingSel in entry[3]:
+            print(entry[:])
+
+
+if __name__ == "__main__":
+    # analyse()
     try:
         run()
+        analyse()
     finally:
         # Close the WebDriver
         driver.quit()
-    # #     # dumpJson(urlSet, filename = "testData.json")
+    #     # dumpJson(urlSet, filename = "testData.json")
 
 
 #todo: next step, add LRU for clicking css selector candidates for speed optimization.
