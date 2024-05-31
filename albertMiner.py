@@ -39,7 +39,7 @@ class SelectorManager:
             self.switch = False
             return "FAIL"   # if we see "FAIL", do not bother to wait for the try-except, break loop
         self.switch = True
-        print("current chosen selector by roll: ",self.rawData[ind].replace("IND",str(self.n)))
+        # print("current chosen selector by roll: ",self.rawData[ind].replace("IND",str(self.n)))
         return self.rawData[ind].replace("IND",str(self.n))
 
     '''
@@ -153,12 +153,21 @@ def run(): #do not load image for better speed
                     EC.presence_of_element_located((By.CSS_SELECTOR, curSelector))
                 )
                 checkOne.click()
-                print("succeeded, with list: ",selectorManager.rawData, " more specifically, selector is: ",curSelector)
+                # print("succeeded, with list: ",selectorManager.rawData, " more specifically, selector is: ",curSelector)
+
+                try:
+                    locInfo = WebDriverWait(driver, 0.5).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR,".meet"))
+                    )
+                    print(locInfo.text, "at index n: ",selectorManager.n)
+                except Exception as e:
+                    print(f"Exception of getting meeting info at n={selectorManager.n}, the class prolly does not meet!")
 
                 break
 
             except Exception as e:
-                print("selector switch happened, now we have: ",selectorManager.rawData)
+                pass
+                # print("selector switch happened, now we have: ",selectorManager.rawData)
 
 
 
