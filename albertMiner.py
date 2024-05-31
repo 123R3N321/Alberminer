@@ -135,6 +135,56 @@ def dynamicScrollAdjust(upperBound=300, lowerBound=600, itemTop=450, itemSize=10
 
 
 
+# Function to find the partition position
+def partition(array, low, high):
+    # Choose the rightmost element as pivot
+    if "Pf" in array[high][4]:
+        pivot = 1000
+    else:   
+        pivot = int(re.findall(r'\d+', array[high][4])[0])
+
+    # Pointer for greater element
+    i = low - 1
+
+    # Traverse through all elements
+    # compare each element with pivot
+    for j in range(low, high):
+        if "Pf" not in array[j][4]:
+            room = int(re.findall(r'\d+', array[j][4])[0])
+        else:
+            room = 1000
+        
+        if room <= pivot:
+            # If element smaller than pivot is found
+            # swap it with the greater element pointed by i
+            i = i + 1
+            # Swapping element at i with element at j
+            (array[i], array[j]) = (array[j], array[i])
+
+    # Swap the pivot element with
+    # the greater element specified by i
+    (array[i + 1], array[high]) = (array[high], array[i + 1])
+
+    # Return the position from where partition is done
+    return i + 1
+
+
+# Function to perform quicksort
+def quicksort(array, low, high):
+    if low < high:
+
+        # Find pivot element such that
+        # element smaller than pivot are on the left
+        # element greater than pivot are on the right
+        pi = partition(array, low, high)
+
+        # Recursive call on the left of pivot
+        quicksort(array, low, pi - 1)
+
+        # Recursive call on the right of pivot
+        quicksort(array, pi + 1, high)
+
+
 data = []
 '''
 the function that does the mining
@@ -330,6 +380,16 @@ def analyse(buildingSel = "2"):
         r"in\s+(?P<building>[\w\s,]+),\s+(?P<room>[\w\s]+)\s+"
         r"\((?P<start_date>\d{1,2}/\d{1,2})\s+to\s+(?P<end_date>\d{1,2}/\d{1,2})\)"
     )
+    
+    Day = {"M" : "Monday", 
+            "T": "Tuesday", 
+            "W" : "Wednesday",
+            "TR": "Tuesday and Thursday", 
+            "F" : "Friday",
+            "R" : "Thursday",
+            "MW" : "Monday and Wednesday",
+            "TTR" : "Tuesday and Thursday",
+            "S" : "Saturday"}
 
     # Helper function to convert time strings to time objects
     def convert_to_time(time_str):
@@ -372,9 +432,12 @@ def analyse(buildingSel = "2"):
             unique_entries.add(entry_tuple)
 
     # Output the unique entries
+    unique_entries = list(unique_entries)
+    quicksort(unique_entries, 0, len(unique_entries)-1)
     for entry in unique_entries:
-        if buildingSel in entry[3]:
-            print(entry[:])
+        #if buildingSel in entry[3]:
+        print("Day: " + Day[entry[0]] + ", Time: " + str(entry[1]) + "-" + str(entry[2]) + " Building and Room:", entry[3] + "," + entry[4])
+            #print(entry[:])
 
 
 if __name__ == "__main__":
