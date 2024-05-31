@@ -96,12 +96,27 @@ def interact(field, content = None):
         where.send_keys(content)
     elif content is None:   #simply click
         where.click()
+
+
+# CSS selector for the scrollable container
+scrollable_container_selector = "div.panel__body:nth-child(3)"
+# step_height = 0  # Amount to scroll each time
+
+# Function to scroll the container by a step
+def scroll_by_step(driver, selector, step_height = 80):
+    container = driver.find_element(By.CSS_SELECTOR, selector)
+    driver.execute_script("arguments[0].scrollTop += arguments[1];", container, step_height)
+
+def zoom_out(driver, zoom_level=0.5):
+    driver.execute_script(f"document.body.style.zoom='{zoom_level}'")
+
+
 def run(): #do not load image for better speed
     global driver
     # I manually put it inside usr, otherwise need to specify driver file path
     options = Options()
-    # options.add_argument('--blink-settings=imagesEnabled=false')  # disable loading image
-    driver = webdriver.Chrome()
+    options.add_argument('--blink-settings=imagesEnabled=false')  # disable loading image
+    driver = webdriver.Chrome(options=options)
 
     # Go to the website
     driver.get("https://albert.nyu.edu/albert_index.html")
@@ -134,11 +149,22 @@ def run(): #do not load image for better speed
     selectorManager = SelectorManager(["div.result:nth-child(IND) > a:nth-child(1)",
                                        "div.result:nth-child(IND)"])
 
-
+    failCt = 0
+    successCt = 0
+    unknownCt = 0
     breaker = 255
-    while selectorManager.n<50 and breaker>0:
+    inPageDelay = 0.2
+    delayFactor = 5
+    step_height = 70  # Amount to scroll each time
+
+    # zoom_out(driver,0.2)
+    '''
+    somehow, zoom function breaks the scraping
+    '''
+
+    while selectorManager.n<200 and breaker>0:
         breaker -= 1
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        # driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
         selectorManager.setTop()
         selectorManager.update(1)
 
@@ -146,22 +172,33 @@ def run(): #do not load image for better speed
             curSelector = selectorManager.roll()
             if "FAIL"==curSelector:
                 print("unknown selector at n= ",selectorManager.n)
+                unknownCt +=1
+                scroll_by_step(driver, scrollable_container_selector, step_height)
+
                 break
 
             try:
-                checkOne = WebDriverWait(driver, 0.2).until(
+                checkOne = WebDriverWait(driver, inPageDelay).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, curSelector))
                 )
                 checkOne.click()
                 # print("succeeded, with list: ",selectorManager.rawData, " more specifically, selector is: ",curSelector)
 
                 try:
-                    locInfo = WebDriverWait(driver, 0.5).until(
+                    locInfo = WebDriverWait(driver, inPageDelay * delayFactor).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR,".meet"))
                     )
                     print(locInfo.text, "at index n: ",selectorManager.n)
+                    successCt+=1
+
+                    scroll_by_step(driver, scrollable_container_selector, step_height)
+                    break
+
                 except Exception as e:
+                    failCt+=1
                     print(f"Exception of getting meeting info at n={selectorManager.n}, the class prolly does not meet!")
+
+                    scroll_by_step(driver, scrollable_container_selector, step_height)
 
                 break
 
@@ -200,7 +237,7 @@ def run(): #do not load image for better speed
     #             print(locInfo.text, "at index n: ",n)
     #         except Exception as e:
     #             print(f"Exception of getting meeting info at n={n}")
-
+    print("script complete, failCt: ",failCt, " successCt: ",successCt, " unknownCt: ",unknownCt)
     time.sleep(3)
 
 
