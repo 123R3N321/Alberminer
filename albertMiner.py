@@ -314,6 +314,43 @@ import re
 import datetime
 
 
+# Helper function to convert time strings to time objects
+def convert_to_time(time_str):
+    try:
+        # Attempt to parse the time with the format '%I:%M%p'
+        return datetime.datetime.strptime(time_str, '%I:%M%p').time()
+    except ValueError:
+        # If parsing fails, attempt to parse without minutes and colon
+        try:
+            # Parse the time without minutes and colon
+            return datetime.datetime.strptime(time_str, '%I%p').time()
+        except ValueError:
+            # If parsing still fails, raise an error
+            raise ValueError("Time format not recognized: " + time_str)
+
+    # Helper function to convert date strings to datetime objects
+def convert_to_date(date_str):
+    return datetime.datetime.strptime(date_str, '%m/%d').replace(year=datetime.datetime.now().year)
+
+'''
+helper function for sorting
+'''
+def roomOrder(roomMsg):
+    numPattern = r'\b\d+\b' #non discriminant numeric match
+    matches = re.findall(numPattern, roomMsg)   #which potentially also gives street num
+
+    if matches:
+        return int(matches[-1])  # Extract the last match as the room number
+    else:
+        return -1 # non numeric room num we treat as lowest possible val
+
+'''
+clumsy.
+'''
+def collectionUnfold(collection):
+    return roomOrder(collection[4])
+
+
 def analyse(buildingSel = "2"):
     global data
 
@@ -330,24 +367,6 @@ def analyse(buildingSel = "2"):
         r"in\s+(?P<building>[\w\s,]+),\s+(?P<room>[\w\s]+)\s+"
         r"\((?P<start_date>\d{1,2}/\d{1,2})\s+to\s+(?P<end_date>\d{1,2}/\d{1,2})\)"
     )
-
-    # Helper function to convert time strings to time objects
-    def convert_to_time(time_str):
-        try:
-            # Attempt to parse the time with the format '%I:%M%p'
-            return datetime.datetime.strptime(time_str, '%I:%M%p').time()
-        except ValueError:
-            # If parsing fails, attempt to parse without minutes and colon
-            try:
-                # Parse the time without minutes and colon
-                return datetime.datetime.strptime(time_str, '%I%p').time()
-            except ValueError:
-                # If parsing still fails, raise an error
-                raise ValueError("Time format not recognized: " + time_str)
-
-    # Helper function to convert date strings to datetime objects
-    def convert_to_date(date_str):
-        return datetime.datetime.strptime(date_str, '%m/%d').replace(year=datetime.datetime.now().year)
 
     # Set to store unique entries
     unique_entries = set()
@@ -372,9 +391,16 @@ def analyse(buildingSel = "2"):
             unique_entries.add(entry_tuple)
 
     # Output the unique entries
-    for entry in unique_entries:
+    # sortedSet = sorted(unique_entries, key=collectionUnfold)
+    sortedSet = sorted(unique_entries, key=lambda x: roomOrder(x[4]))
+    # for entry in unique_entries:
+    #     if buildingSel in entry[3]:
+    #         unorderedLst.append(entry)
+
+    for entry in sortedSet:
         if buildingSel in entry[3]:
-            print(entry[:])
+            print(entry)
+
 
 
 if __name__ == "__main__":
