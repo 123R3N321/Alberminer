@@ -139,7 +139,7 @@ def dynamicScrollAdjust(upperBound=300, lowerBound=600, itemTop=450, itemSize=10
 def partition(array, low, high):
     # Choose the rightmost element as pivot
     if "Pf" in array[high][4]:
-        pivot = 1000
+        pivot = -1
     else:   
         pivot = int(re.findall(r'\d+', array[high][4])[0])
 
@@ -152,7 +152,7 @@ def partition(array, low, high):
         if "Pf" not in array[j][4]:
             room = int(re.findall(r'\d+', array[j][4])[0])
         else:
-            room = 1000
+            room = -1
         
         if room <= pivot:
             # If element smaller than pivot is found
