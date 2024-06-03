@@ -287,27 +287,6 @@ def dumpJson(urlLst, filename = "testData.json"):
 
 
 
-    # selectorManager = SelectorManager(["fakeAtIndINDpos","anotherwithINDpos"])
-    # print("we just initializd is: ",selectorManager.rawData)
-    # print("first, try to roll: ", selectorManager.roll())
-    # print("check if bumper goes to 1 corrct: ", selectorManager.bumper)
-    # print("roll again, we check another: ",selectorManager.roll())
-    # print("check if bumper goes to 2 corrct: ", selectorManager.bumper)
-    # # print("roll a third time, we should fail now: ",selectorManager.roll())
-    # # print("check if bumper goes to 3 corrct: ", selectorManager.bumper)
-    # selectorManager.setTop()
-    # selectorManager.update(0)
-    #
-    # print("check entire list after setTop: ", selectorManager.rawData)
-    # print("look all good, we try more: ")
-    # print("first, try to roll, we shld see another: ", selectorManager.roll())
-    # print("check if bumper goes to 1 corrct: ", selectorManager.bumper)
-    # print("roll again, we check fake at: ",selectorManager.roll())
-    # print("check if bumper goes to 2 corrct: ", selectorManager.bumper)
-    # print("roll a third time, we should fail now: ",selectorManager.roll())
-    # print("check if bumper goes to 3 corrct: ", selectorManager.bumper)
-
-
 ###################################below is data analysing##########################################
 
 import re
