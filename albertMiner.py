@@ -161,7 +161,7 @@ def run(): #do not load image for better speed
 
     dropdown = Select(select_element)
 
-    # Select the option for brooklyn campus.
+    # Select the option for brookbrooklyn campus.
     dropdown.select_by_value("WS@BRKLN")   #this is changed for dff campuses. I selected brooklyn here
 
     # Verify the selected option (optional)
