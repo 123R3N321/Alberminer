@@ -149,7 +149,7 @@ data = []
 the function that does the mining
 detailed Search gives much, much more insight, but slows down code
 '''
-def run(detailedSearch = False): #do not load image for better speed
+def run(keyword = None, detailedSearch = False): #do not load image for better speed
     global driver
     extraDelay = 10 #for extra slow steps
     # I manually put it inside usr, otherwise need to specify driver file path
@@ -177,6 +177,13 @@ def run(detailedSearch = False): #do not load image for better speed
     # Verify the selected option (optional)
     selected_option = dropdown.first_selected_option
     print(f"Selected option: {selected_option.text}")
+
+    #we can even search for keyword
+    if(keyword):
+        searchBar = WebDriverWait(driver, extraDelay).until(
+            EC.presence_of_element_located((By.ID, 'crit-keyword'))  # Update the locator as necessary
+        )
+        searchBar.send_keys(keyword)
 
     startSearch = WebDriverWait(driver, extraDelay).until(  #slow step. Extra wait
         EC.presence_of_element_located((By.ID, "search-button"))  # Adjust the selector as needed
@@ -228,6 +235,7 @@ def run(detailedSearch = False): #do not load image for better speed
                 checkOne = WebDriverWait(driver, inPageDelay).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, curSelector))
                 )
+                print(checkOne.text,": ")
                 # print("testing eachButton top, ",checkOne.location["y"]," and total height: ",checkOne.size["height"])
                 '''
                 below is the dynamic scroll code, might fail. Careful.
@@ -246,48 +254,6 @@ def run(detailedSearch = False): #do not load image for better speed
                     )
                     print(locInfo.text, "at index n: ",selectorManager.n)
                     successCt+=1
-                    if(detailedSearch):
-                        #first check type. Lab("REC") is likely not useful
-                        sectionTypeScrollManager = SelectorManager((["a.course-section:nth-child(IND) > div:nth-child(2)"]))
-                        sectionTypeScrollManager.n = 1  #because starts at ind 2
-                        #next meeting time specific to section
-                        sectionTimeScrollManager = SelectorManager(["a.course-section:nth-child(IND) > div:nth-child(3)"])
-                        sectionTimeScrollManager.n = 1
-                        #and prof's name. Vital!!!
-                        profScrollManager = SelectorManager(["a.course-section:nth-child(IND) > div:nth-child(4)"])
-                        profScrollManager.n = 1
-                        localScanRange = 32 #assuming no more than 31 sections per class,
-                        #this number is big as we might have multiple labs here too
-                        while localScanRange>0:
-                            localScanRange-=1
-                            sectionTypeScrollManager.update(1)
-                            sectionTypeSelector = sectionTypeScrollManager.roll()
-                            sectionTimeScrollManager.update(1)
-                            sectionTimeSelector = sectionTimeScrollManager.roll()
-                            profScrollManager.update(1)
-                            profSelector = profScrollManager.roll()
-                            try:
-                                # print(" generated selector: ", profSelector)
-
-                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
-                                    EC.presence_of_element_located((By.CSS_SELECTOR, sectionTypeSelector))
-                                )
-                                print("SectionType: ", section.text, end = '\t')
-
-                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
-                                    EC.presence_of_element_located((By.CSS_SELECTOR, sectionTimeSelector))
-                                )
-                                print("DetailedMeeting time: ", section.text, end = '\t')
-
-                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
-                                    EC.presence_of_element_located((By.CSS_SELECTOR,profSelector))
-                                )
-                                print("Instructor ",section.text, end = '\n')
-
-
-                            except: #we reach the end
-                                # print("No hit with new thing")
-                                break
 
                     global data
                     if locInfo.text != prevInfo:
@@ -301,9 +267,58 @@ def run(detailedSearch = False): #do not load image for better speed
                     failCt+=1
                     print(f"Exception of getting meeting info at n={selectorManager.n}, the class prolly does not meet!")
                     # correction small step scroll, which is safer
-                    scroll_by_step(driver, scrollable_container_selector, correction)
 
-                break
+                finally:
+
+                    if (detailedSearch):
+                        # first check type. Lab("REC") is likely not useful
+                        sectionTypeScrollManager = SelectorManager(
+                            (["a.course-section:nth-child(IND) > div:nth-child(2)"]))
+                        sectionTypeScrollManager.n = 1  # because starts at ind 2
+                        # next meeting time specific to section
+                        sectionTimeScrollManager = SelectorManager(
+                            ["a.course-section:nth-child(IND) > div:nth-child(3)"])
+                        sectionTimeScrollManager.n = 1
+                        # and prof's name. Vital!!!
+                        profScrollManager = SelectorManager(["a.course-section:nth-child(IND) > div:nth-child(4)"])
+                        profScrollManager.n = 1
+                        localScanRange = 32  # assuming no more than 31 sections per class,
+                        # this number is big as we might have multiple labs here too
+                        while localScanRange > 0:
+                            localScanRange -= 1
+                            sectionTypeScrollManager.update(1)
+                            sectionTypeSelector = sectionTypeScrollManager.roll()
+                            sectionTimeScrollManager.update(1)
+                            sectionTimeSelector = sectionTimeScrollManager.roll()
+                            profScrollManager.update(1)
+                            profSelector = profScrollManager.roll()
+                            try:
+                                # print(" generated selector: ", profSelector)
+
+                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, sectionTypeSelector))
+                                )
+                                print(" SectionType: ", section.text, end='\t')
+
+                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, sectionTimeSelector))
+                                )
+                                print(" DetailedMeeting time: ", section.text, end='\t')
+
+                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, profSelector))
+                                )
+                                print(" Instructor ", section.text, end='\n')
+
+
+                            except:  # we reach the end
+                                # print("No hit with new thing")
+                                print()
+                                break
+
+                    scroll_by_step(driver, scrollable_container_selector, correction)
+                    print()
+                    break
 
             except Exception as e: #course button not found. Need selectorManager to switch selector now.
                 pass
@@ -437,7 +452,7 @@ def analyse(buildingSel = "2"):
 if __name__ == "__main__":
     # analyse()
     try:
-        run(detailedSearch=True)
+        run(keyword = "CS", detailedSearch=True)
         analyse()
     finally:
         # Close the WebDriver
