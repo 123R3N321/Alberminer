@@ -13,14 +13,23 @@ class SelectorManager:
         self.bumper = 0 #repeatedly increased by one by each call of "roll"
                         #setTop relies one bumper
         self.switch = False
+        self.orignial = selectorLst.copy()
 
     def add(self,selector):
         if selector in self.rawData:
             print("This selector already exists")
         else:
             self.rawData.append(selector)
+
+    '''
+    edit:
+    do not bother clearing the rawData
+    simply declare another one
+    now we keep the raw.
+    and need to row again.
+    '''
     def reset(self):
-        self.rawData = []
+        self.rawData = self.orignial.copy()
         self.n = 0
         self.top = 0
         self.bumper = 0
@@ -138,8 +147,9 @@ def dynamicScrollAdjust(upperBound=300, lowerBound=600, itemTop=450, itemSize=10
 data = []
 '''
 the function that does the mining
+detailed Search gives much, much more insight, but slows down code
 '''
-def run(): #do not load image for better speed
+def run(detailedSearch = False): #do not load image for better speed
     global driver
     extraDelay = 10 #for extra slow steps
     # I manually put it inside usr, otherwise need to specify driver file path
@@ -218,7 +228,7 @@ def run(): #do not load image for better speed
                 checkOne = WebDriverWait(driver, inPageDelay).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, curSelector))
                 )
-                print("testing eachButton top, ",checkOne.location["y"]," and total height: ",checkOne.size["height"])
+                # print("testing eachButton top, ",checkOne.location["y"]," and total height: ",checkOne.size["height"])
                 '''
                 below is the dynamic scroll code, might fail. Careful.
                 '''
@@ -236,6 +246,48 @@ def run(): #do not load image for better speed
                     )
                     print(locInfo.text, "at index n: ",selectorManager.n)
                     successCt+=1
+                    if(detailedSearch):
+                        #first check type. Lab("REC") is likely not useful
+                        sectionTypeScrollManager = SelectorManager((["a.course-section:nth-child(IND) > div:nth-child(2)"]))
+                        sectionTypeScrollManager.n = 1  #because starts at ind 2
+                        #next meeting time specific to section
+                        sectionTimeScrollManager = SelectorManager(["a.course-section:nth-child(IND) > div:nth-child(3)"])
+                        sectionTimeScrollManager.n = 1
+                        #and prof's name. Vital!!!
+                        profScrollManager = SelectorManager(["a.course-section:nth-child(IND) > div:nth-child(4)"])
+                        profScrollManager.n = 1
+                        localScanRange = 32 #assuming no more than 31 sections per class,
+                        #this number is big as we might have multiple labs here too
+                        while localScanRange>0:
+                            localScanRange-=1
+                            sectionTypeScrollManager.update(1)
+                            sectionTypeSelector = sectionTypeScrollManager.roll()
+                            sectionTimeScrollManager.update(1)
+                            sectionTimeSelector = sectionTimeScrollManager.roll()
+                            profScrollManager.update(1)
+                            profSelector = profScrollManager.roll()
+                            try:
+                                # print(" generated selector: ", profSelector)
+
+                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, sectionTypeSelector))
+                                )
+                                print("SectionType: ", section.text, end = '\t')
+
+                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR, sectionTimeSelector))
+                                )
+                                print("DetailedMeeting time: ", section.text, end = '\t')
+
+                                section = WebDriverWait(driver, inPageDelay * delayFactor).until(
+                                    EC.presence_of_element_located((By.CSS_SELECTOR,profSelector))
+                                )
+                                print("Instructor ",section.text, end = '\n')
+
+
+                            except: #we reach the end
+                                # print("No hit with new thing")
+                                break
 
                     global data
                     if locInfo.text != prevInfo:
@@ -385,7 +437,7 @@ def analyse(buildingSel = "2"):
 if __name__ == "__main__":
     # analyse()
     try:
-        run()
+        run(detailedSearch=True)
         analyse()
     finally:
         # Close the WebDriver
@@ -394,3 +446,31 @@ if __name__ == "__main__":
 
 
 #todo: next step, add LRU for clicking css selector candidates for speed optimization.
+#add prof search
+'''
+a.course-section:nth-child(2) > div:nth-child(4)
+a.course-section:nth-child(5) > div:nth-child(4)
+a.course-section:nth-child(4) > div:nth-child(4)
+a.course-section:nth-child(6) > div:nth-child(4)
+
+
+
+a.course-section:nth-child(2) > div:nth-child(4)
+
+
+
+we also need update on location time
+
+a.course-section:nth-child(2) > div:nth-child(3)
+a.course-section:nth-child(7) > div:nth-child(3)
+
+so final ind 3 is time, 4 is teacher
+
+
+and, section type; lab is most likely not useful
+
+a.course-section:nth-child(2) > div:nth-child(2)
+a.course-section:nth-child(9) > div:nth-child(2)
+a.course-section:nth-child(3) > div:nth-child(2)
+
+'''
